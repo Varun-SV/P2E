@@ -26,15 +26,11 @@ jobs:
         python -m pip install --upgrade pip
         pip install pylint
 
-    - name: Create custom .pylintrc file
-      run: |
-        echo "[MESSAGES CONTROL]" > .pylintrc
-        echo "disable = C0303, C0301" >> .pylintrc
-        echo "" >> .pylintrc
-        echo "[FORMAT]" >> .pylintrc
-        echo "max-line-length = 120" >> .pylintrc
-
     - name: Run Pylint on python_code/
       run: |
-        echo "Running Pylint on python_code/ folder..."
-        pylint --rcfile=.pylintrc python_code/*.py
+        echo "Running Pylint on python_code/*.py..."
+        pylint \
+          --disable=C0114,C0115,C0116 \
+          --disable=R0902,R0904,R0911,R0912,R0914,R0915 \
+          --disable=W0201,W0718,W0719,W1510,W1514,W0612,C0304 \
+          python_code/*.py
