@@ -16,14 +16,14 @@
 P2E/
 │   README.md                <- You're here!
 │
-├───python\_code/
+├───python_code/
 │   └───p2e.py               <- Main GUI application script
 │
-├───streamlit\_version/      <- Future/alternative Streamlit-based web version (optional)
+├───streamlit_version/      <- Future/alternative Streamlit-based web version (optional)
 │   ├───lib/
 │   └───web-pages/
 │
-└───windows\_exe/
+└───windows_exe/
 └───p2e.exe              <- Precompiled executable for Windows (run this if you don’t want to use Python)
 
 ```
@@ -54,7 +54,7 @@ P2E/
 Just run the file:
 ```
 
-windows\_exe/p2e.exe
+windows_exe/p2e.exe
 
 ````
 
