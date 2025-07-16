@@ -174,7 +174,7 @@ class PyInstallerGUI:
         self.proxy_entry.grid(row=1, column=1, sticky=(tk.W, tk.E), pady=2, padx=(5, 0))
         
         # Set default proxy
-        self.proxy_url.set("http://proxy.toshiba-tsip.com:8080")
+        self.proxy_url.set("http://proxy")
         
         # Hidden imports
         imports_frame = ttk.LabelFrame(advanced_frame, text="Hidden Imports", padding="10")
