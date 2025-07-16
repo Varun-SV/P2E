@@ -388,7 +388,7 @@ class PyInstallerGUI:
                     settings = json.load(f)
                 
                 # Load settings
-                self.proxy_url.set(settings.get('proxy_url', 'http://proxy.toshiba-tsip.com:8080'))
+                self.proxy_url.set(settings.get('proxy_url', 'http://proxy'))
                 self.use_proxy.set(settings.get('use_proxy', False))
                 self.output_dir.set(settings.get('output_dir', ''))
                 self.exe_name.set(settings.get('exe_name', ''))
@@ -670,7 +670,7 @@ class PyInstallerGUI:
 
 def main():
     root = tk.Tk()
-    app = PyInstallerGUI(root)
+    PyInstallerGUI(root)
     root.mainloop()
 
 if __name__ == "__main__":
