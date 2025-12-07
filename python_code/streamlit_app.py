@@ -1,104 +1,250 @@
-import React, { useState } from 'react';
-import { Copy, Download, Plus, Trash2, Settings, FileCode, FolderPlus, Package } from 'lucide-react';
+import streamlit as st
+import json
+from pathlib import Path
 
-export default function PyInstallerGenerator() {
-  const [scriptName, setScriptName] = useState('');
-  const [exeName, setExeName] = useState('');
-  const [outputDir, setOutputDir] = useState('./dist');
-  const [iconPath, setIconPath] = useState('');
-  
-  const [oneFile, setOneFile] = useState(true);
-  const [consoleMode, setConsoleMode] = useState(false);
-  const [cleanBuild, setCleanBuild] = useState(true);
-  const [upxCompress, setUpxCompress] = useState(false);
-  
-  const [useProxy, setUseProxy] = useState(false);
-  const [proxyUrl, setProxyUrl] = useState('http://proxy');
-  
-  const [hiddenImports, setHiddenImports] = useState([]);
-  const [newImport, setNewImport] = useState('');
-  
-  const [additionalFiles, setAdditionalFiles] = useState([]);
-  const [newFile, setNewFile] = useState({ source: '', dest: '' });
-  
-  const [additionalFolders, setAdditionalFolders] = useState([]);
-  const [newFolder, setNewFolder] = useState({ source: '', dest: '' });
-  
-  const [copied, setCopied] = useState(false);
+# Page configuration
+st.set_page_config(
+    page_title="PyInstaller Command Generator",
+    page_icon="📦",
+    layout="wide"
+)
 
-  const addHiddenImport = () => {
-    if (newImport.trim() && !hiddenImports.includes(newImport.trim())) {
-      setHiddenImports([...hiddenImports, newImport.trim()]);
-      setNewImport('');
+# Custom CSS
+st.markdown("""
+    <style>
+    .main {
+        padding: 0rem 1rem;
     }
-  };
-
-  const removeHiddenImport = (index) => {
-    setHiddenImports(hiddenImports.filter((_, i) => i !== index));
-  };
-
-  const addFile = () => {
-    if (newFile.source.trim() && newFile.dest.trim()) {
-      setAdditionalFiles([...additionalFiles, { ...newFile }]);
-      setNewFile({ source: '', dest: '' });
+    .stButton>button {
+        width: 100%;
     }
-  };
-
-  const removeFile = (index) => {
-    setAdditionalFiles(additionalFiles.filter((_, i) => i !== index));
-  };
-
-  const addFolder = () => {
-    if (newFolder.source.trim() && newFolder.dest.trim()) {
-      setAdditionalFolders([...additionalFolders, { ...newFolder }]);
-      setNewFolder({ source: '', dest: '' });
+    .code-box {
+        background-color: #1e1e1e;
+        color: #d4d4d4;
+        padding: 1rem;
+        border-radius: 0.5rem;
+        font-family: 'Courier New', monospace;
+        font-size: 0.9rem;
+        overflow-x: auto;
     }
-  };
+    .info-box {
+        background-color: #e7f3ff;
+        border-left: 4px solid #2196F3;
+        padding: 1rem;
+        border-radius: 0.25rem;
+        margin: 1rem 0;
+    }
+    </style>
+""", unsafe_allow_html=True)
 
-  const removeFolder = (index) => {
-    setAdditionalFolders(additionalFolders.filter((_, i) => i !== index));
-  };
+# Initialize session state
+if 'hidden_imports' not in st.session_state:
+    st.session_state.hidden_imports = []
+if 'additional_files' not in st.session_state:
+    st.session_state.additional_files = []
+if 'additional_folders' not in st.session_state:
+    st.session_state.additional_folders = []
 
-  const generateCommand = () => {
-    if (!scriptName.trim()) return '';
+# Header
+st.title("📦 PyInstaller Command Generator")
+st.markdown("Create PyInstaller commands and compilation scripts for your Python projects")
+st.divider()
 
-    let cmd = 'pyinstaller';
-    
-    if (oneFile) cmd += ' --onefile';
-    else cmd += ' --onedir';
-    
-    if (!consoleMode) cmd += ' --windowed';
-    if (cleanBuild) cmd += ' --clean';
-    
-    if (outputDir.trim()) cmd += ` --distpath "${outputDir}"`;
-    if (exeName.trim()) cmd += ` --name "${exeName}"`;
-    if (iconPath.trim()) cmd += ` --icon "${iconPath}"`;
-    if (upxCompress) cmd += ' --upx-dir';
-    
-    additionalFiles.forEach(file => {
-      const separator = process.platform === 'win32' ? ';' : ':';
-      cmd += ` --add-data "${file.source}${separator}${file.dest}"`;
-    });
-    
-    additionalFolders.forEach(folder => {
-      const separator = process.platform === 'win32' ? ';' : ':';
-      cmd += ` --add-data "${folder.source}${separator}${folder.dest}"`;
-    });
-    
-    hiddenImports.forEach(imp => {
-      cmd += ` --hidden-import ${imp}`;
-    });
-    
-    cmd += ` "${scriptName}"`;
-    
-    return cmd;
-  };
+# Main layout
+col1, col2 = st.columns(2)
 
-  const generatePythonScript = () => {
-    const command = generateCommand();
-    if (!command) return '';
+with col1:
+    st.subheader("🔧 Basic Configuration")
+    
+    script_name = st.text_input(
+        "Python Script Path *",
+        placeholder="script.py or /path/to/script.py",
+        help="The main Python script to compile"
+    )
+    
+    exe_name = st.text_input(
+        "Executable Name",
+        placeholder="MyApp (optional)",
+        help="Name for the output executable"
+    )
+    
+    output_dir = st.text_input(
+        "Output Directory",
+        value="./dist",
+        help="Where to save the compiled executable"
+    )
+    
+    icon_path = st.text_input(
+        "Icon File (.ico)",
+        placeholder="icon.ico (optional)",
+        help="Path to icon file for Windows executable"
+    )
+    
+    st.divider()
+    
+    st.subheader("⚙️ Build Options")
+    
+    col_opt1, col_opt2 = st.columns(2)
+    
+    with col_opt1:
+        one_file = st.checkbox("Single File (--onefile)", value=True)
+        clean_build = st.checkbox("Clean Build (--clean)", value=True)
+    
+    with col_opt2:
+        console_mode = st.checkbox("Console Mode", value=False)
+        upx_compress = st.checkbox("UPX Compression", value=False)
+    
+    st.divider()
+    
+    st.subheader("🌐 Proxy Settings")
+    
+    use_proxy = st.checkbox("Use Proxy")
+    
+    if use_proxy:
+        proxy_url = st.text_input(
+            "Proxy URL",
+            value="http://proxy:port",
+            help="HTTP proxy for pip installation"
+        )
+    else:
+        proxy_url = ""
 
-    return `import subprocess
+with col2:
+    st.subheader("📚 Hidden Imports")
+    
+    new_import = st.text_input(
+        "Add Hidden Import",
+        placeholder="module.name",
+        key="new_import_input"
+    )
+    
+    col_add_import, col_clear_imports = st.columns([3, 1])
+    
+    with col_add_import:
+        if st.button("➕ Add Import"):
+            if new_import.strip() and new_import.strip() not in st.session_state.hidden_imports:
+                st.session_state.hidden_imports.append(new_import.strip())
+                st.rerun()
+    
+    with col_clear_imports:
+        if st.button("🗑️ Clear All"):
+            st.session_state.hidden_imports = []
+            st.rerun()
+    
+    if st.session_state.hidden_imports:
+        for idx, imp in enumerate(st.session_state.hidden_imports):
+            col_imp, col_del = st.columns([4, 1])
+            with col_imp:
+                st.code(imp, language=None)
+            with col_del:
+                if st.button("❌", key=f"del_import_{idx}"):
+                    st.session_state.hidden_imports.pop(idx)
+                    st.rerun()
+    
+    st.divider()
+    
+    st.subheader("📄 Additional Files")
+    
+    file_source = st.text_input("File Source Path", key="file_source")
+    file_dest = st.text_input("File Destination", key="file_dest")
+    
+    if st.button("➕ Add File"):
+        if file_source.strip() and file_dest.strip():
+            st.session_state.additional_files.append({
+                'source': file_source.strip(),
+                'dest': file_dest.strip()
+            })
+            st.rerun()
+    
+    if st.session_state.additional_files:
+        for idx, file in enumerate(st.session_state.additional_files):
+            col_file, col_del = st.columns([4, 1])
+            with col_file:
+                st.text(f"{file['source']} -> {file['dest']}")
+            with col_del:
+                if st.button("❌", key=f"del_file_{idx}"):
+                    st.session_state.additional_files.pop(idx)
+                    st.rerun()
+    
+    st.divider()
+    
+    st.subheader("📁 Additional Folders")
+    
+    folder_source = st.text_input("Folder Source Path", key="folder_source")
+    folder_dest = st.text_input("Folder Destination", key="folder_dest")
+    
+    if st.button("➕ Add Folder"):
+        if folder_source.strip() and folder_dest.strip():
+            st.session_state.additional_folders.append({
+                'source': folder_source.strip(),
+                'dest': folder_dest.strip()
+            })
+            st.rerun()
+    
+    if st.session_state.additional_folders:
+        for idx, folder in enumerate(st.session_state.additional_folders):
+            col_folder, col_del = st.columns([4, 1])
+            with col_folder:
+                st.text(f"{folder['source']} -> {folder['dest']}")
+            with col_del:
+                if st.button("❌", key=f"del_folder_{idx}"):
+                    st.session_state.additional_folders.pop(idx)
+                    st.rerun()
+
+# Generate command function
+def generate_command(script_name, exe_name, output_dir, icon_path, one_file, 
+                    console_mode, clean_build, upx_compress, hidden_imports, 
+                    additional_files, additional_folders):
+    if not script_name.strip():
+        return ""
+    
+    cmd = "pyinstaller"
+    
+    if one_file:
+        cmd += " --onefile"
+    else:
+        cmd += " --onedir"
+    
+    if not console_mode:
+        cmd += " --windowed"
+    
+    if clean_build:
+        cmd += " --clean"
+    
+    if output_dir.strip():
+        cmd += f' --distpath "{output_dir}"'
+    
+    if exe_name.strip():
+        cmd += f' --name "{exe_name}"'
+    
+    if icon_path.strip():
+        cmd += f' --icon "{icon_path}"'
+    
+    if upx_compress:
+        cmd += " --upx-dir"
+    
+    # Add additional files
+    for file in additional_files:
+        # Use semicolon for Windows, colon for Unix
+        cmd += f' --add-data "{file["source"]};{file["dest"]}"'
+    
+    # Add additional folders
+    for folder in additional_folders:
+        cmd += f' --add-data "{folder["source"]};{folder["dest"]}"'
+    
+    # Add hidden imports
+    for imp in hidden_imports:
+        cmd += f" --hidden-import {imp}"
+    
+    cmd += f' "{script_name}"'
+    
+    return cmd
+
+# Generate Python script function
+def generate_python_script(command, use_proxy, proxy_url):
+    proxy_param = f', "--proxy", "{proxy_url}"' if use_proxy and proxy_url else ''
+    
+    script = f'''import subprocess
 import sys
 
 def install_pyinstaller():
@@ -108,14 +254,14 @@ def install_pyinstaller():
         print("PyInstaller is already installed")
     except ImportError:
         print("Installing PyInstaller...")
-        subprocess.check_call([sys.executable, "-m", "pip", "install", "pyinstaller"${useProxy && proxyUrl ? `, "--proxy", "${proxyUrl}"` : ''}])
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "pyinstaller"{proxy_param}])
         print("PyInstaller installed successfully")
 
 def compile_script():
     """Compile the Python script to executable"""
     install_pyinstaller()
     
-    cmd = ${JSON.stringify(command.split(' '))}
+    cmd = {command.split()}
     
     print("Running PyInstaller with command:")
     print(" ".join(cmd))
@@ -127,376 +273,119 @@ def compile_script():
         print("Compilation completed successfully!")
         return True
     except subprocess.CalledProcessError as e:
-        print(f"Error during compilation: {e}")
+        print(f"Error during compilation: {{e}}")
         return False
 
 if __name__ == "__main__":
     compile_script()
-`;
-  };
+'''
+    return script
 
-  const copyToClipboard = (text) => {
-    navigator.clipboard.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
+# Generate outputs
+st.divider()
+st.header("📋 Generated Output")
 
-  const downloadPythonScript = () => {
-    const script = generatePythonScript();
-    const blob = new Blob([script], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'compile_script.py';
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const command = generateCommand();
-  const pythonScript = generatePythonScript();
-
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
-      <div className="max-w-6xl mx-auto">
-        <div className="bg-white rounded-2xl shadow-2xl overflow-hidden">
-          <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-6 text-white">
-            <div className="flex items-center gap-3">
-              <Package className="w-10 h-10" />
-              <div>
-                <h1 className="text-3xl font-bold">PyInstaller Command Generator</h1>
-                <p className="text-blue-100 mt-1">Create PyInstaller commands for your Python projects</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="p-6">
-            <div className="grid md:grid-cols-2 gap-6">
-              {/* Left Column - Main Settings */}
-              <div className="space-y-6">
-                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-4 rounded-lg border border-blue-200">
-                  <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                    <FileCode className="w-5 h-5 text-blue-600" />
-                    Basic Configuration
-                  </h2>
-                  
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Python Script Path *
-                      </label>
-                      <input
-                        type="text"
-                        value={scriptName}
-                        onChange={(e) => setScriptName(e.target.value)}
-                        placeholder="script.py or /path/to/script.py"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Executable Name
-                      </label>
-                      <input
-                        type="text"
-                        value={exeName}
-                        onChange={(e) => setExeName(e.target.value)}
-                        placeholder="MyApp (optional)"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Output Directory
-                      </label>
-                      <input
-                        type="text"
-                        value={outputDir}
-                        onChange={(e) => setOutputDir(e.target.value)}
-                        placeholder="./dist"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Icon File (.ico)
-                      </label>
-                      <input
-                        type="text"
-                        value={iconPath}
-                        onChange={(e) => setIconPath(e.target.value)}
-                        placeholder="icon.ico (optional)"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-gradient-to-br from-purple-50 to-pink-50 p-4 rounded-lg border border-purple-200">
-                  <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                    <Settings className="w-5 h-5 text-purple-600" />
-                    Build Options
-                  </h2>
-                  
-                  <div className="space-y-3">
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={oneFile}
-                        onChange={(e) => setOneFile(e.target.checked)}
-                        className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
-                      />
-                      <span className="text-sm font-medium text-gray-700">
-                        Single File (--onefile)
-                      </span>
-                    </label>
-
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={consoleMode}
-                        onChange={(e) => setConsoleMode(e.target.checked)}
-                        className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
-                      />
-                      <span className="text-sm font-medium text-gray-700">
-                        Console Mode (show terminal)
-                      </span>
-                    </label>
-
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={cleanBuild}
-                        onChange={(e) => setCleanBuild(e.target.checked)}
-                        className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
-                      />
-                      <span className="text-sm font-medium text-gray-700">
-                        Clean Build (--clean)
-                      </span>
-                    </label>
-
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={upxCompress}
-                        onChange={(e) => setUpxCompress(e.target.checked)}
-                        className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
-                      />
-                      <span className="text-sm font-medium text-gray-700">
-                        UPX Compression
-                      </span>
-                    </label>
-                  </div>
-                </div>
-
-                <div className="bg-gradient-to-br from-green-50 to-teal-50 p-4 rounded-lg border border-green-200">
-                  <h2 className="text-lg font-semibold text-gray-800 mb-4">Proxy Settings</h2>
-                  
-                  <label className="flex items-center gap-2 cursor-pointer mb-3">
-                    <input
-                      type="checkbox"
-                      checked={useProxy}
-                      onChange={(e) => setUseProxy(e.target.checked)}
-                      className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
-                    />
-                    <span className="text-sm font-medium text-gray-700">Use Proxy</span>
-                  </label>
-
-                  {useProxy && (
-                    <input
-                      type="text"
-                      value={proxyUrl}
-                      onChange={(e) => setProxyUrl(e.target.value)}
-                      placeholder="http://proxy:port"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                  )}
-                </div>
-              </div>
-
-              {/* Right Column - Advanced Settings */}
-              <div className="space-y-6">
-                <div className="bg-gradient-to-br from-orange-50 to-red-50 p-4 rounded-lg border border-orange-200">
-                  <h2 className="text-lg font-semibold text-gray-800 mb-4">Hidden Imports</h2>
-                  
-                  <div className="flex gap-2 mb-3">
-                    <input
-                      type="text"
-                      value={newImport}
-                      onChange={(e) => setNewImport(e.target.value)}
-                      onKeyPress={(e) => e.key === 'Enter' && addHiddenImport()}
-                      placeholder="module.name"
-                      className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                    <button
-                      onClick={addHiddenImport}
-                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                    >
-                      <Plus className="w-5 h-5" />
-                    </button>
-                  </div>
-
-                  <div className="space-y-2 max-h-40 overflow-y-auto">
-                    {hiddenImports.map((imp, index) => (
-                      <div key={index} className="flex items-center justify-between bg-white p-2 rounded border">
-                        <span className="text-sm font-mono">{imp}</span>
-                        <button
-                          onClick={() => removeHiddenImport(index)}
-                          className="text-red-600 hover:text-red-800"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="bg-gradient-to-br from-yellow-50 to-amber-50 p-4 rounded-lg border border-yellow-200">
-                  <h2 className="text-lg font-semibold text-gray-800 mb-4">Additional Files</h2>
-                  
-                  <div className="space-y-2 mb-3">
-                    <input
-                      type="text"
-                      value={newFile.source}
-                      onChange={(e) => setNewFile({ ...newFile, source: e.target.value })}
-                      placeholder="Source path"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                    <div className="flex gap-2">
-                      <input
-                        type="text"
-                        value={newFile.dest}
-                        onChange={(e) => setNewFile({ ...newFile, dest: e.target.value })}
-                        placeholder="Destination"
-                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
-                      <button
-                        onClick={addFile}
-                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                      >
-                        <Plus className="w-5 h-5" />
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2 max-h-32 overflow-y-auto">
-                    {additionalFiles.map((file, index) => (
-                      <div key={index} className="flex items-center justify-between bg-white p-2 rounded border">
-                        <span className="text-xs font-mono truncate">{file.source} → {file.dest}</span>
-                        <button
-                          onClick={() => removeFile(index)}
-                          className="text-red-600 hover:text-red-800 ml-2"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="bg-gradient-to-br from-cyan-50 to-blue-50 p-4 rounded-lg border border-cyan-200">
-                  <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                    <FolderPlus className="w-5 h-5 text-cyan-600" />
-                    Additional Folders
-                  </h2>
-                  
-                  <div className="space-y-2 mb-3">
-                    <input
-                      type="text"
-                      value={newFolder.source}
-                      onChange={(e) => setNewFolder({ ...newFolder, source: e.target.value })}
-                      placeholder="Source folder"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                    <div className="flex gap-2">
-                      <input
-                        type="text"
-                        value={newFolder.dest}
-                        onChange={(e) => setNewFolder({ ...newFolder, dest: e.target.value })}
-                        placeholder="Destination"
-                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
-                      <button
-                        onClick={addFolder}
-                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                      >
-                        <Plus className="w-5 h-5" />
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2 max-h-32 overflow-y-auto">
-                    {additionalFolders.map((folder, index) => (
-                      <div key={index} className="flex items-center justify-between bg-white p-2 rounded border">
-                        <span className="text-xs font-mono truncate">{folder.source} → {folder.dest}</span>
-                        <button
-                          onClick={() => removeFolder(index)}
-                          className="text-red-600 hover:text-red-800 ml-2"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Generated Output */}
-            {command && (
-              <div className="mt-6 space-y-4">
-                <div className="bg-gray-900 rounded-lg p-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <h3 className="text-white font-semibold">Generated Command</h3>
-                    <button
-                      onClick={() => copyToClipboard(command)}
-                      className="flex items-center gap-2 px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors text-sm"
-                    >
-                      <Copy className="w-4 h-4" />
-                      {copied ? 'Copied!' : 'Copy'}
-                    </button>
-                  </div>
-                  <pre className="text-green-400 text-sm overflow-x-auto">{command}</pre>
-                </div>
-
-                <div className="bg-indigo-900 rounded-lg p-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <h3 className="text-white font-semibold">Python Compilation Script</h3>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => copyToClipboard(pythonScript)}
-                        className="flex items-center gap-2 px-3 py-1 bg-purple-600 text-white rounded hover:bg-purple-700 transition-colors text-sm"
-                      >
-                        <Copy className="w-4 h-4" />
-                        Copy
-                      </button>
-                      <button
-                        onClick={downloadPythonScript}
-                        className="flex items-center gap-2 px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 transition-colors text-sm"
-                      >
-                        <Download className="w-4 h-4" />
-                        Download
-                      </button>
-                    </div>
-                  </div>
-                  <pre className="text-purple-300 text-xs overflow-x-auto max-h-64">{pythonScript}</pre>
-                </div>
-
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <h4 className="font-semibold text-blue-900 mb-2">📋 How to Use:</h4>
-                  <ol className="list-decimal list-inside space-y-1 text-sm text-blue-800">
-                    <li>Copy the command above and run it in your terminal</li>
-                    <li>OR download the Python script and run it: <code className="bg-blue-100 px-2 py-1 rounded">python compile_script.py</code></li>
-                    <li>Your executable will be created in the output directory</li>
-                  </ol>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
+if script_name:
+    command = generate_command(
+        script_name, exe_name, output_dir, icon_path, one_file,
+        console_mode, clean_build, upx_compress, st.session_state.hidden_imports,
+        st.session_state.additional_files, st.session_state.additional_folders
+    )
+    
+    python_script = generate_python_script(command, use_proxy, proxy_url if use_proxy else "")
+    
+    # Display command
+    st.subheader("🖥️ Terminal Command")
+    st.code(command, language="bash")
+    
+    col_copy1, col_info = st.columns([1, 3])
+    with col_copy1:
+        st.button("📋 Copy Command", key="copy_cmd", help="Click to select, then Ctrl+C to copy")
+    
+    st.divider()
+    
+    # Display Python script
+    st.subheader("🐍 Python Compilation Script")
+    st.code(python_script, language="python")
+    
+    # Download button
+    st.download_button(
+        label="⬇️ Download Python Script",
+        data=python_script,
+        file_name="compile_script.py",
+        mime="text/x-python"
+    )
+    
+    st.divider()
+    
+    # Instructions
+    st.markdown("""
+    <div class="info-box">
+        <h4>📖 How to Use:</h4>
+        <ol>
+            <li><strong>Option 1:</strong> Copy the terminal command above and run it in your command prompt/terminal</li>
+            <li><strong>Option 2:</strong> Download the Python script and run it: <code>python compile_script.py</code></li>
+            <li>Your executable will be created in the output directory you specified</li>
+        </ol>
+        <p><strong>Note:</strong> Make sure PyInstaller is installed or the script will install it automatically.</p>
     </div>
-  );
-}
+    """, unsafe_allow_html=True)
+    
+    # Save/Load Settings
+    st.divider()
+    st.subheader("💾 Settings Management")
+    
+    col_save, col_load = st.columns(2)
+    
+    with col_save:
+        st.markdown("**Save Current Configuration**")
+        settings = {
+            'script_name': script_name,
+            'exe_name': exe_name,
+            'output_dir': output_dir,
+            'icon_path': icon_path,
+            'one_file': one_file,
+            'console_mode': console_mode,
+            'clean_build': clean_build,
+            'upx_compress': upx_compress,
+            'use_proxy': use_proxy,
+            'proxy_url': proxy_url if use_proxy else "",
+            'hidden_imports': st.session_state.hidden_imports,
+            'additional_files': st.session_state.additional_files,
+            'additional_folders': st.session_state.additional_folders
+        }
+        
+        settings_json = json.dumps(settings, indent=2)
+        st.download_button(
+            label="⬇️ Download Settings (JSON)",
+            data=settings_json,
+            file_name="pyinstaller_settings.json",
+            mime="application/json"
+        )
+    
+    with col_load:
+        st.markdown("**Load Configuration**")
+        uploaded_file = st.file_uploader("Upload Settings JSON", type=['json'])
+        
+        if uploaded_file is not None:
+            try:
+                loaded_settings = json.load(uploaded_file)
+                if st.button("✅ Apply Loaded Settings"):
+                    st.session_state.hidden_imports = loaded_settings.get('hidden_imports', [])
+                    st.session_state.additional_files = loaded_settings.get('additional_files', [])
+                    st.session_state.additional_folders = loaded_settings.get('additional_folders', [])
+                    st.success("Settings loaded! Refresh the page to see changes.")
+            except Exception as e:
+                st.error(f"Error loading settings: {str(e)}")
+
+else:
+    st.info("👆 Enter a Python script path to generate the PyInstaller command")
+
+# Footer
+st.divider()
+st.markdown("""
+<div style="text-align: center; color: #666; padding: 1rem;">
+    <p>💡 This tool generates PyInstaller commands - you'll need to run them on your local machine</p>
+    <p>Made with ❤️ for Python developers</p>
+</div>
+""", unsafe_allow_html=True)
