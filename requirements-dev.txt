@@ -1,0 +1,14 @@
+# Development dependencies
+-r requirements.txt
+
+# Testing
+pytest>=7.0.0
+pytest-cov>=3.0.0
+
+# Code quality
+black>=22.0.0
+mypy>=0.990
+pylint>=2.15.0
+
+# Type stubs
+types-PyYAML>=6.0.0
