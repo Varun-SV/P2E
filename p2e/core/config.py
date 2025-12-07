@@ -4,7 +4,7 @@ Configuration management for P2E builds.
 
 from dataclasses import dataclass, field, asdict
 from pathlib import Path
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Tuple
 import json
 import yaml
 
@@ -32,8 +32,8 @@ class BuildConfig:
     strip_symbols: bool = False
 
     # Additional resources
-    additional_files: List[tuple[str, str]] = field(default_factory=list)
-    additional_folders: List[tuple[str, str]] = field(default_factory=list)
+    additional_files: List[Tuple[str, str]] = field(default_factory=list)
+    additional_folders: List[Tuple[str, str]] = field(default_factory=list)
     hidden_imports: List[str] = field(default_factory=list)
 
     # Network settings

@@ -2,6 +2,8 @@
 Modern Streamlit web interface for P2E.
 """
 
+import datetime
+import re
 import streamlit as st
 import tempfile
 import shutil
@@ -299,12 +301,14 @@ def build_executable(
                 add_files_list.append((str(file_path), add_file.name))
                 log(f"✓ Saved additional file: {add_file.name}")
             
-            # Parse hidden imports
-            hidden_imports = [
-                line.strip() 
-                for line in hidden_imports_text.split('\n') 
-                if line.strip()
-            ]
+            # Parse hidden imports with validation
+            hidden_imports = []
+            for line in hidden_imports_text.split('\n'):
+                module = line.strip()
+                if module and re.match(r'^[a-zA-Z_][a-zA-Z0-9_]*(\.[a-zA-Z_][a-zA-Z0-9_]*)*$', module):
+                    hidden_imports.append(module)
+                elif module:
+                    log(f"⚠ Warning: Invalid module name '{module}', skipping")
             
             progress_bar.progress(30)
             
@@ -357,7 +361,6 @@ def build_executable(
                         )
                     
                     # Add to history
-                    import datetime
                     st.session_state.build_history.append({
                         'name': exe_name,
                         'timestamp': datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
@@ -372,7 +375,6 @@ def build_executable(
                 progress_bar.progress(0)
                 
                 # Add to history
-                import datetime
                 st.session_state.build_history.append({
                     'name': exe_name,
                     'timestamp': datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
