@@ -1,0 +1,30 @@
+# P2E Configuration for GUI Applications
+# Template for building windowed GUI applications
+
+script_path: "path/to/gui_app.py"
+exe_name: "MyGUIApp"
+
+# GUI settings
+one_file: true
+console_mode: false  # Hide console window for GUI apps
+windowed: true
+clean_build: true
+
+# Icon for GUI app
+icon_path: "path/to/icon.ico"
+
+# Common GUI hidden imports
+hidden_imports:
+  - "tkinter"
+  - "PIL"
+  - "PIL._tkinter_finder"
+
+# Include UI resources
+additional_files: []
+# Example:
+# - ["resources/icon.png", "resources/icon.png"]
+# - ["config/settings.ini", "config/settings.ini"]
+
+additional_folders:
+  # - ["resources/", "resources/"]
+  # - ["themes/", "themes/"]

@@ -1,0 +1,47 @@
+# Basic P2E Build Configuration
+# This is a template configuration file for building Python executables
+
+# Required: Path to your Python script
+script_path: "path/to/your/script.py"
+
+# Output settings
+output_dir: null  # null = same directory as script
+exe_name: null    # null = use script name
+
+# Build mode
+one_file: true      # true = single .exe, false = folder with .exe
+console_mode: true  # true = show console, false = windowed (no console)
+windowed: false     # Alternative to console_mode
+clean_build: true   # Remove build artifacts after build
+
+# Icon (optional)
+icon_path: null
+
+# Advanced options
+upx_compress: false
+strip_symbols: false
+
+# Additional resources (format: [source, destination])
+additional_files: []
+# Example:
+# - ["data/config.json", "config.json"]
+# - ["assets/logo.png", "assets/logo.png"]
+
+additional_folders: []
+# Example:
+# - ["data/", "data/"]
+# - ["assets/", "assets/"]
+
+# Hidden imports (modules PyInstaller might miss)
+hidden_imports: []
+# Example:
+# - "numpy"
+# - "pandas"
+# - "requests"
+
+# Network settings
+use_proxy: false
+proxy_url: null
+
+# Extra PyInstaller arguments
+extra_args: []
