@@ -141,8 +141,23 @@ with col2:
                     log_container.code("\n".join(logs), language="bash")
 
                 try:
-                    status_container.info("Preparing environment...")
+                    status_container.info("Setting up isolated build environment...")
                     
+                    # --- FIX: Create a local virtual environment to avoid permission errors ---
+                    venv_path = os.path.join(temp_dir, "venv")
+                    log("Creating temporary virtual environment...")
+                    subprocess.run([sys.executable, "-m", "venv", venv_path], check=True)
+                    
+                    # Determine python path in the new venv
+                    if os.name == 'nt':
+                        venv_python = os.path.join(venv_path, "Scripts", "python.exe")
+                    else:
+                        venv_python = os.path.join(venv_path, "bin", "python")
+                    
+                    # Upgrade pip in new venv (optional but good practice)
+                    subprocess.run([venv_python, "-m", "pip", "install", "--upgrade", "pip"], capture_output=True)
+                    # -------------------------------------------------------------------------
+
                     # 1. Save Main File
                     main_path = os.path.join(temp_dir, st.session_state.main_file['name'])
                     with open(main_path, 'wb') as f:
@@ -165,7 +180,8 @@ with col2:
                         with open(req_path, "w") as f:
                             f.write("\n".join(st.session_state.requirements))
                         
-                        pip_cmd = [sys.executable, "-m", "pip", "install", "-r", req_path]
+                        # Use venv_python instead of sys.executable
+                        pip_cmd = [venv_python, "-m", "pip", "install", "-r", req_path]
                         log(f"Running: {' '.join(pip_cmd)}")
                         
                         req_process = subprocess.run(
@@ -185,28 +201,26 @@ with col2:
                             log(req_process.stdout)
                             log("Dependencies installed successfully.")
 
-                    # Ensure PyInstaller is installed
-                    try:
-                        import PyInstaller
-                    except ImportError:
-                        log("Installing PyInstaller...")
-                        inst_process = subprocess.run(
-                            [sys.executable, "-m", "pip", "install", "pyinstaller"],
-                            capture_output=True,
-                            text=True
-                        )
-                        if inst_process.returncode != 0:
-                             log("Failed to install PyInstaller:")
-                             log(inst_process.stderr)
-                             raise Exception("Could not install PyInstaller.")
-                        log("PyInstaller installed.")
+                    # Always install PyInstaller in the isolated venv
+                    log("Installing PyInstaller in temporary environment...")
+                    inst_process = subprocess.run(
+                        [venv_python, "-m", "pip", "install", "pyinstaller"],
+                        capture_output=True,
+                        text=True
+                    )
+                    if inst_process.returncode != 0:
+                            log("Failed to install PyInstaller:")
+                            log(inst_process.stderr)
+                            raise Exception("Could not install PyInstaller.")
+                    log("PyInstaller installed.")
 
                     # 4. Build Command
                     status_container.info("Compiling... This may take a minute.")
                     log("--- Starting PyInstaller ---")
                     
+                    # Use venv_python to run PyInstaller
                     cmd = [
-                        sys.executable, "-m", "PyInstaller",
+                        venv_python, "-m", "PyInstaller",
                         "--noconfirm",
                         "--distpath", os.path.join(temp_dir, "dist"),
                         "--workpath", os.path.join(temp_dir, "build"),
@@ -225,11 +239,9 @@ with col2:
                     if clean_build:
                         cmd.append("--clean")
 
-                    # Add data files (simple approach: add all additional files as data)
-                    # Note: complex folder structures require more logic, assuming flat for now or user zips
+                    # Add data files
                     sep = ';' if sys.platform.startswith('win') else ':'
                     for f_data in st.session_state.additional_files:
-                        # Format: source_file;dest_folder
                         cmd.extend(['--add-data', f"{os.path.join(temp_dir, f_data['name'])}{sep}."])
 
                     cmd.append(main_path)
