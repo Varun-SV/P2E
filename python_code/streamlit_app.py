@@ -165,15 +165,41 @@ with col2:
                         with open(req_path, "w") as f:
                             f.write("\n".join(st.session_state.requirements))
                         
-                        subprocess.check_call([sys.executable, "-m", "pip", "install", "-r", req_path])
-                        log("Dependencies installed.")
+                        pip_cmd = [sys.executable, "-m", "pip", "install", "-r", req_path]
+                        log(f"Running: {' '.join(pip_cmd)}")
+                        
+                        req_process = subprocess.run(
+                            pip_cmd,
+                            capture_output=True,
+                            text=True
+                        )
+                        
+                        if req_process.returncode != 0:
+                            log("⚠️ DEPENDENCY INSTALLATION FAILED")
+                            log("Error Output:")
+                            log(req_process.stderr)
+                            log("Standard Output:")
+                            log(req_process.stdout)
+                            raise Exception("Failed to install requirements. Check the logs above for specific package errors.")
+                        else:
+                            log(req_process.stdout)
+                            log("Dependencies installed successfully.")
 
                     # Ensure PyInstaller is installed
                     try:
                         import PyInstaller
                     except ImportError:
                         log("Installing PyInstaller...")
-                        subprocess.check_call([sys.executable, "-m", "pip", "install", "pyinstaller"])
+                        inst_process = subprocess.run(
+                            [sys.executable, "-m", "pip", "install", "pyinstaller"],
+                            capture_output=True,
+                            text=True
+                        )
+                        if inst_process.returncode != 0:
+                             log("Failed to install PyInstaller:")
+                             log(inst_process.stderr)
+                             raise Exception("Could not install PyInstaller.")
+                        log("PyInstaller installed.")
 
                     # 4. Build Command
                     status_container.info("Compiling... This may take a minute.")
